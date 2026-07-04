@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			body {
+				font:
+					13px system-ui,
+					sans-serif;
+				width: 280px;
+				padding: 12px;
+			}
+			label {
+				display: block;
+				margin-top: 8px;
+				color: #444;
+			}
+			input[type='text'],
+			input[type='password'] {
+				width: 100%;
+				margin-top: 2px;
+				padding: 6px;
+				box-sizing: border-box;
+			}
+			.row {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				margin-top: 10px;
+			}
+			button {
+				margin-top: 10px;
+				padding: 6px 12px;
+				cursor: pointer;
+			}
+			#status {
+				margin-top: 8px;
+				min-height: 16px;
+				color: #555;
+			}
+			hr {
+				margin: 12px 0;
+				border: none;
+				border-top: 1px solid #eee;
+			}
+		</style>
+	</head>
+	<body>
+		<button id="clip">Clip this page</button>
+		<div id="status"></div>
+		<hr />
+		<label>API base<input id="apiBase" type="text" placeholder="http://localhost:4100" /></label>
+		<label>Token<input id="token" type="password" placeholder="INGEST_SECRET" /></label>
+		<div class="row"><input id="grokEnabled" type="checkbox" /><span>Enable Grok feed</span></div>
+		<button id="save">Save settings</button>
+	</body>
+	<script type="module" src="./popup.js"></script>
+</html>

@@ -1,0 +1,26 @@
+{
+	"name": "@scout/memory",
+	"version": "0.1.0",
+	"description": "Scout memory — namespace-aware read/write over supermemory",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"test": "vitest run --passWithNoTests --testTimeout=60000",
+		"lint": "eslint src test",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"dotenv": "^16.4.5",
+		"supermemory": "^3.0.0",
+		"zod": "^3.23.8"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.24",
+		"tsx": "^4.7.1",
+		"typescript": "^5.3.3",
+		"vitest": "^3.2.4"
+	}
+}

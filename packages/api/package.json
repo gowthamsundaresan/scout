@@ -1,0 +1,32 @@
+{
+	"name": "@scout/api",
+	"version": "0.1.0",
+	"description": "Scout API — HTTP gateway (ingest + future routes)",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"scripts": {
+		"dev": "tsx watch --clear-screen=false ./src/index.ts",
+		"start": "tsx ./src/index.ts",
+		"build": "tsc -p tsconfig.build.json",
+		"test": "vitest run --passWithNoTests --testTimeout=60000",
+		"lint": "eslint src test",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@scout/indexer": "*",
+		"cors": "^2.8.5",
+		"dotenv": "^16.4.5",
+		"express": "^4.19.2",
+		"helmet": "^7.1.0"
+	},
+	"devDependencies": {
+		"@types/cors": "^2.8.17",
+		"@types/express": "^4.17.21",
+		"@types/node": "^20.11.24",
+		"tsx": "^4.7.1",
+		"typescript": "^5.3.3",
+		"vitest": "^3.2.4"
+	}
+}

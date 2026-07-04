@@ -1,0 +1,19 @@
+{
+	"name": "@scout/extension",
+	"version": "0.1.0",
+	"description": "Scout Clipper — MV3 extension that clips pages to the indexer",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "node build.mjs",
+		"test": "vitest run --passWithNoTests",
+		"type-check": "tsc --noEmit",
+		"lint": "eslint src test"
+	},
+	"devDependencies": {
+		"@types/chrome": "^0.0.287",
+		"esbuild": "^0.24.0",
+		"typescript": "^5.3.3",
+		"vitest": "^3.2.4"
+	}
+}

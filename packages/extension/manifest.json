@@ -1,0 +1,36 @@
+{
+	"manifest_version": 3,
+	"name": "Scout Clipper",
+	"version": "0.1.0",
+	"description": "Clip pages into Scout's memory and run scheduled Grok feeds.",
+	"action": {
+		"default_popup": "popup.html",
+		"default_title": "Clip to Scout"
+	},
+	"background": {
+		"service_worker": "background.js",
+		"type": "module"
+	},
+	"permissions": [
+		"scripting",
+		"contextMenus",
+		"storage",
+		"activeTab",
+		"offscreen",
+		"declarativeNetRequest",
+		"cookies"
+	],
+	"host_permissions": ["https://grok.com/*", "<all_urls>"],
+	"content_scripts": [
+		{
+			"matches": ["https://grok.com/*"],
+			"js": ["grok-early-hook.js"],
+			"run_at": "document_start",
+			"world": "MAIN",
+			"all_frames": true
+		}
+	],
+	"declarative_net_request": {
+		"rule_resources": [{ "id": "grok_iframe_rules", "enabled": true, "path": "grok-rules.json" }]
+	}
+}

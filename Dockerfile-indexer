@@ -1,0 +1,16 @@
+# Scout Indexer — persistent ingest worker
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+ARG CI_BUILD_VERSION
+ENV INDEXER_VERSION=$CI_BUILD_VERSION
+
+COPY package.json package-lock.json ./
+COPY packages ./packages
+
+RUN npm ci
+
+# tsx runs the worker entrypoint directly
+CMD ["npx", "tsx", "packages/indexer/src/worker.ts"]
