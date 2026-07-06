@@ -1,0 +1,25 @@
+{
+	"name": "@scout/llm",
+	"version": "0.1.0",
+	"description": "Scout LLM — shared OpenRouter client + Langfuse tracing for the agentic packages",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"test": "vitest run --passWithNoTests --testTimeout=60000",
+		"lint": "eslint src",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"langfuse": "^3.38.0",
+		"openai": "^6.44.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.24",
+		"tsx": "^4.7.1",
+		"typescript": "^5.3.3",
+		"vitest": "^3.2.4"
+	}
+}

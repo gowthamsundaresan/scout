@@ -15,13 +15,21 @@ everything else: the memory data layer and, later, the indexer, evals, and agent
 ```
 packages/
   memory/             # the data layer — typed, namespace-aware read/write over supermemory
+  llm/                # shared OpenRouter client + Langfuse `traced` wrapper + resolveModel
+  indexer/            # source-agnostic ingest worker (clean → processing-agent → memory.world)
+  agents/             # ceo — 6-hourly digest as a Temporal cron workflow over a LangGraph core
     src/
-      index.ts        # public surface
-      types.ts        # contract: Namespace ('self' | 'world' | 'system') + record shapes
+      ceo/            # graph.ts (rank → compose), digest.ts (render), prompts.ts, models.ts
+      gateway/        # client.ts — register + /send to scout-gateway
+      temporal/       # activities.ts, workflows.ts, worker.ts, schedule.ts (6h cron)
+      bootstrap.ts    # registers the ceo client + digest templates with the gateway
+  api/                # ingest gateway (health/config/ingest)
+  extension/          # grok-capture browser extension
 ```
 
-Planned, **not yet present**: `packages/{indexer,evals,agents}` and a tg-ingress client. Add them as
-`packages/*` workspaces (the root needs no edit).
+`llm` is the one shared runtime dep of `indexer` + `agents` (kills the duplicated LLM/trace client);
+each package keeps its own model-key map. Planned, **not yet present**: `packages/evals`, the
+cto-agent (a Temporal signal workflow), and a tg-ingress client.
 
 ### memory — the one rule
 
