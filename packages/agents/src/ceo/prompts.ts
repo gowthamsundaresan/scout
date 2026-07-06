@@ -2,36 +2,44 @@ import type { AiUpdateRecord, PersonRecord, SelfRecord } from '@scout/memory'
 
 // --- Types & state ---
 
-export const RANK_SYSTEM = `You are Scout's CEO agent doing the ranking pass of a 6-hourly outreach digest.
+export const RANK_SYSTEM = `You are Scout's CEO agent doing the ranking pass of a 6-hourly digest.
 You are given the user's own profile/theses/asks/offers ("self"), a pool of world items (people,
 ai-updates, opportunities — each with a dedupeKey, salience 0..1, and summary), and a list of
 dedupeKeys already decided in earlier cycles (do NOT re-surface those).
 
-Select, using ONLY dedupeKeys present in the pool:
-- recommend: people genuinely worth reaching out to NOW — tight fit to the user's theses/asks/offers.
-- antiRecommend: people that look on-topic but are NOT worth the user's time this cycle — say the anti-signal.
-- updates: ai-updates worth putting in front of the user.
+Split the pool into four buckets, using ONLY dedupeKeys present in the pool and matching the item's type:
+- people.recommend: people worth reaching out to NOW — tight fit to the user's theses/asks/offers.
+- people.antiRecommend: people that look on-topic but are NOT worth the user's time — name the anti-signal.
+- updates.recommend: ai-updates the user should actually read — material and relevant to their work.
+- updates.antiRecommend: ai-updates that look important but are hype/noise/irrelevant to them — say why to skip.
 
-Prefer high salience AND tight fit over volume; a short, sharp list beats a long one. Each pick needs a
-one-line reason. Return ONLY JSON: { "recommend": [{"dedupeKey","reason"}], "antiRecommend": [...], "updates": [...] }.`
+Prefer high salience AND tight fit over volume; a short, sharp list beats a long one. Every pick needs a
+one-line reason. People buckets take only person items; update buckets take only ai-update items.
+Return ONLY JSON: { "people": {"recommend":[{"dedupeKey","reason"}],"antiRecommend":[...]},
+"updates": {"recommend":[...],"antiRecommend":[...]} }.`
 
 export const COMPOSE_SYSTEM = `You are Scout's CEO agent composing the human-facing digest from an already-ranked
-selection. You get the selected people (full records), selected ai-updates, and the user's theses/offers.
+selection. You get the user's theses/offers and four buckets (each with full records): recommended people,
+anti-recommended people, recommended ai-updates, anti-recommended ai-updates.
 
-For each recommended person write:
-- why: why reach out now (specific, grounded in their record).
-- message: a concrete 2-3 sentence outreach message the user could send, referencing something real about them.
-- pitch: how the user's theses/offers are relevant to them (omit if there is no honest fit).
-For each ai-update: a one-line why-it-matters. For each anti-recommendation: a terse why-skip.
-
-Be specific and honest; never invent facts not in the records. Return ONLY JSON matching this shape:
-{ "recommend": {"headline", "people": [{"name","handle?","why","message","pitch?"}]},
-  "updates": [{"title","why"}], "antiRecommend": {"people": [{"name","why"}]} }.`
+Write:
+- people.recommend.entries: per person — why (reach out now, grounded in their record), a concrete 2-3 sentence
+  outreach message referencing something real about them, and pitch (how the user's theses/offers fit — omit if
+  there is no honest fit).
+- people.antiRecommend.entries: per person — a terse why-skip.
+- updates.recommend.entries: per update — a one-line why-it-matters.
+- updates.antiRecommend.entries: per update — a one-line why-skip.
+Give each recommend bucket a short headline. Be specific and honest; never invent facts not in the records.
+Return ONLY JSON matching:
+{ "people": {"recommend":{"headline","entries":[{"name","handle?","why","message","pitch?"}]},
+"antiRecommend":{"entries":[{"name","why"}]}},
+"updates": {"recommend":{"headline","entries":[{"title","why"}]},"antiRecommend":{"entries":[{"title","why"}]}} }.`
 
 export type Selected = {
-	recommend: PersonRecord[]
-	antiRecommend: PersonRecord[]
-	updates: AiUpdateRecord[]
+	peopleRecommend: PersonRecord[]
+	peopleAntiRecommend: PersonRecord[]
+	updatesRecommend: AiUpdateRecord[]
+	updatesAntiRecommend: AiUpdateRecord[]
 }
 
 // --- Core functions ---
@@ -67,18 +75,10 @@ export function composePrompt(self: SelfRecord[], selected: Selected): string {
 			'USER THESES/OFFERS',
 			theses.map((s) => `- ${s.title}: ${s.body}`)
 		),
-		section(
-			'RECOMMENDED PEOPLE',
-			selected.recommend.map((p) => person(p))
-		),
-		section(
-			'AI UPDATES',
-			selected.updates.map((u) => `- ${u.title}: ${u.whatHappened} — ${u.whyItMatters}`)
-		),
-		section(
-			'ANTI-RECOMMENDED PEOPLE',
-			selected.antiRecommend.map((p) => person(p))
-		)
+		section('RECOMMENDED PEOPLE', selected.peopleRecommend.map(person)),
+		section('ANTI-RECOMMENDED PEOPLE', selected.peopleAntiRecommend.map(person)),
+		section('RECOMMENDED AI UPDATES', selected.updatesRecommend.map(update)),
+		section('ANTI-RECOMMENDED AI UPDATES', selected.updatesAntiRecommend.map(update))
 	].join('\n\n')
 }
 
@@ -88,6 +88,10 @@ function person(p: PersonRecord): string {
 	const handle = p.handle ? ` (${p.handle})` : ''
 	const role = p.role ? `, ${p.role}` : ''
 	return `- ${p.title}${handle}${role}: ${p.whyInteresting} [${p.summary}]`
+}
+
+function update(u: AiUpdateRecord): string {
+	return `- ${u.title}: ${u.whatHappened} — ${u.whyItMatters} [${u.summary}]`
 }
 
 function section(heading: string, lines: string[]): string {

@@ -1,11 +1,32 @@
 import { flushTraces } from '@scout/llm'
-import { list } from '@scout/memory'
+import { type Intent, list } from '@scout/memory'
 
-import { type Digest, isEmpty } from '../ceo/digest'
+import { type Digest, type DigestKey, isEmpty } from '../ceo/digest'
 import { type CeoContext, type CeoResult, runCeoGraph } from '../ceo/graph'
-import { CEO_CLIENT_ID, TEMPLATE_ANTIRECOMMEND, TEMPLATE_RECOMMEND } from '../constants'
+import {
+	CEO_CLIENT_ID,
+	TEMPLATE_AI_ANTIRECOMMEND,
+	TEMPLATE_AI_RECOMMEND,
+	TEMPLATE_PEOPLE_ANTIRECOMMEND,
+	TEMPLATE_PEOPLE_RECOMMEND
+} from '../constants'
 import { loadEnv } from '../env'
 import { type SendResult, registerClient, sendMessage } from '../gateway/client'
+
+// --- Types & state ---
+
+// The four digests, in send order. slug keeps messageIds stable+idempotent across activity retries.
+const PLAN: { key: DigestKey; templateId: string; intent: Intent; slug: string }[] = [
+	{ key: 'peopleRecommend', templateId: TEMPLATE_PEOPLE_RECOMMEND, intent: 0, slug: 'people-0' },
+	{
+		key: 'peopleAntiRecommend',
+		templateId: TEMPLATE_PEOPLE_ANTIRECOMMEND,
+		intent: 1,
+		slug: 'people-1'
+	},
+	{ key: 'updatesRecommend', templateId: TEMPLATE_AI_RECOMMEND, intent: 0, slug: 'ai-0' },
+	{ key: 'updatesAntiRecommend', templateId: TEMPLATE_AI_ANTIRECOMMEND, intent: 1, slug: 'ai-1' }
+]
 
 // --- Core functions ---
 
@@ -26,7 +47,7 @@ export async function composeDigest(ctx: CeoContext): Promise<CeoResult> {
 	return result
 }
 
-// messageId is derived from the workflow runId so activity retries never double-send.
+// One message per non-empty section; messageId is derived from runId so retries never double-send.
 export async function sendDigest(runId: string, digest: Digest): Promise<SendResult[]> {
 	const env = loadEnv()
 	const admin = { baseUrl: env.gatewayUrl, adminSecret: env.gatewayAdminSecret }
@@ -39,23 +60,15 @@ export async function sendDigest(runId: string, digest: Digest): Promise<SendRes
 
 	const empty = isEmpty(digest)
 	const sent: SendResult[] = []
-	if (!empty.recommend) {
+	for (const plan of PLAN) {
+		if (empty[plan.key]) continue
+		const section = digest[plan.key]
 		sent.push(
 			await sendMessage(auth, {
-				messageId: `${runId}-0`,
-				templateId: TEMPLATE_RECOMMEND,
-				intent: 0,
-				vars: { title: digest.recommend.title, body: digest.recommend.body }
-			})
-		)
-	}
-	if (!empty.antiRecommend) {
-		sent.push(
-			await sendMessage(auth, {
-				messageId: `${runId}-1`,
-				templateId: TEMPLATE_ANTIRECOMMEND,
-				intent: 1,
-				vars: { title: digest.antiRecommend.title, body: digest.antiRecommend.body }
+				messageId: `${runId}-${plan.slug}`,
+				templateId: plan.templateId,
+				intent: plan.intent,
+				vars: { title: section.title, body: section.body }
 			})
 		)
 	}

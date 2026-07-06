@@ -3,72 +3,94 @@ import { z } from 'zod'
 // --- Types & state ---
 
 // The compose node's contract. Prose (messages, pitches, blurbs) is the LLM's job; turning it into
-// the two channel-ready sections is deterministic (renderDigest), so it stays testable.
+// channel-ready sections is deterministic (renderDigest), so it stays testable. Four buckets:
+// recommend + anti-recommend, for people and for ai-updates — each delivered as its own message.
+const personEntry = z.object({
+	name: z.string(),
+	handle: z.string().optional(),
+	why: z.string(),
+	message: z.string(),
+	pitch: z.string().optional()
+})
+const skipEntry = z.object({ name: z.string(), why: z.string() })
+const updateEntry = z.object({ title: z.string(), why: z.string() })
+
 export const composeSchema = z.object({
-	recommend: z.object({
-		headline: z.string(),
-		people: z.array(
-			z.object({
-				name: z.string(),
-				handle: z.string().optional(),
-				why: z.string(),
-				message: z.string(),
-				pitch: z.string().optional()
-			})
-		)
+	people: z.object({
+		recommend: z.object({ headline: z.string(), entries: z.array(personEntry) }),
+		antiRecommend: z.object({ entries: z.array(skipEntry) })
 	}),
-	updates: z.array(z.object({ title: z.string(), why: z.string() })),
-	antiRecommend: z.object({
-		people: z.array(z.object({ name: z.string(), why: z.string() }))
+	updates: z.object({
+		recommend: z.object({ headline: z.string(), entries: z.array(updateEntry) }),
+		antiRecommend: z.object({ entries: z.array(updateEntry) })
 	})
 })
 
 export type ComposeOutput = z.infer<typeof composeSchema>
 
 export type DigestSection = { title: string; body: string }
-export type Digest = { recommend: DigestSection; antiRecommend: DigestSection }
+export type Digest = {
+	peopleRecommend: DigestSection
+	peopleAntiRecommend: DigestSection
+	updatesRecommend: DigestSection
+	updatesAntiRecommend: DigestSection
+}
+export type DigestKey = keyof Digest
+
+export const EMPTY_COMPOSE: ComposeOutput = {
+	people: { recommend: { headline: '', entries: [] }, antiRecommend: { entries: [] } },
+	updates: { recommend: { headline: '', entries: [] }, antiRecommend: { entries: [] } }
+}
 
 // --- Core functions ---
 
 export function renderDigest(c: ComposeOutput): Digest {
-	return { recommend: renderRecommend(c), antiRecommend: renderAntiRecommend(c) }
+	return {
+		peopleRecommend: renderPeopleRecommend(c),
+		peopleAntiRecommend: renderPeopleSkip(c),
+		updatesRecommend: renderUpdatesRecommend(c),
+		updatesAntiRecommend: renderUpdatesSkip(c)
+	}
 }
 
-export function isEmpty(d: Digest): { recommend: boolean; antiRecommend: boolean } {
+export function isEmpty(d: Digest): Record<DigestKey, boolean> {
 	return {
-		recommend: !d.recommend.body.trim(),
-		antiRecommend: !d.antiRecommend.body.trim()
+		peopleRecommend: !d.peopleRecommend.body.trim(),
+		peopleAntiRecommend: !d.peopleAntiRecommend.body.trim(),
+		updatesRecommend: !d.updatesRecommend.body.trim(),
+		updatesAntiRecommend: !d.updatesAntiRecommend.body.trim()
 	}
 }
 
 // --- Helper functions ---
 
-function renderRecommend(c: ComposeOutput): DigestSection {
-	const blocks: string[] = []
-	if (c.recommend.people.length) {
-		const people = c.recommend.people.map((p) => {
-			const who = p.handle ? `**${p.name}** (${p.handle})` : `**${p.name}**`
-			const lines = [`• ${who} — ${p.why}`, `  ↳ Message: ${p.message}`]
-			if (p.pitch) lines.push(`  ↳ Pitch: ${p.pitch}`)
-			return lines.join('\n')
-		})
-		blocks.push(['*People to reach out to*', ...people].join('\n\n'))
-	}
-	if (c.updates.length) {
-		const updates = c.updates.map((u) => `• **${u.title}** — ${u.why}`)
-		blocks.push(['*AI updates*', updates.join('\n')].join('\n\n'))
-	}
-	const body = blocks.length ? [c.recommend.headline, ...blocks].join('\n\n') : ''
-	return { title: 'Scout digest — who to reach & what shipped', body }
+function renderPeopleRecommend(c: ComposeOutput): DigestSection {
+	const entries = c.people.recommend.entries.map((p) => {
+		const who = p.handle ? `**${p.name}** (${p.handle})` : `**${p.name}**`
+		const lines = [`• ${who} — ${p.why}`, `  ↳ Message: ${p.message}`]
+		if (p.pitch) lines.push(`  ↳ Pitch: ${p.pitch}`)
+		return lines.join('\n')
+	})
+	const body = entries.length
+		? [c.people.recommend.headline, entries.join('\n\n')].join('\n\n')
+		: ''
+	return { title: 'Scout — people to reach out to', body }
 }
 
-function renderAntiRecommend(c: ComposeOutput): DigestSection {
-	const people = c.antiRecommend.people
-	const body = people.length
-		? [
-				'People to skip this cycle:',
-				people.map((p) => `• **${p.name}** — ${p.why}`).join('\n')
-			].join('\n\n')
-		: ''
-	return { title: 'Scout digest — skip these', body }
+function renderPeopleSkip(c: ComposeOutput): DigestSection {
+	const entries = c.people.antiRecommend.entries.map((p) => `• **${p.name}** — ${p.why}`)
+	const body = entries.length ? ['People to skip this cycle:', entries.join('\n')].join('\n\n') : ''
+	return { title: 'Scout — people to skip', body }
+}
+
+function renderUpdatesRecommend(c: ComposeOutput): DigestSection {
+	const entries = c.updates.recommend.entries.map((u) => `• **${u.title}** — ${u.why}`)
+	const body = entries.length ? [c.updates.recommend.headline, entries.join('\n')].join('\n\n') : ''
+	return { title: 'Scout — AI updates worth your attention', body }
+}
+
+function renderUpdatesSkip(c: ComposeOutput): DigestSection {
+	const entries = c.updates.antiRecommend.entries.map((u) => `• **${u.title}** — ${u.why}`)
+	const body = entries.length ? ['AI noise to skip:', entries.join('\n')].join('\n\n') : ''
+	return { title: 'Scout — AI noise to skip', body }
 }

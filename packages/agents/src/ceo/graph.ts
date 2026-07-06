@@ -10,18 +10,27 @@ import type {
 	WorldRecord
 } from '@scout/memory'
 
-import { type ComposeOutput, type Digest, composeSchema, renderDigest } from './digest'
+import {
+	type ComposeOutput,
+	type Digest,
+	EMPTY_COMPOSE,
+	composeSchema,
+	renderDigest
+} from './digest'
 import { modelFor } from './models'
 import { COMPOSE_SYSTEM, RANK_SYSTEM, type Selected, composePrompt, rankPrompt } from './prompts'
 
 // --- Types & state ---
 
 const selectionSchema = z.object({ dedupeKey: z.string().min(1), reason: z.string() })
+const bucketPairSchema = z.object({
+	recommend: z.array(selectionSchema),
+	antiRecommend: z.array(selectionSchema)
+})
 
 export const rankSchema = z.object({
-	recommend: z.array(selectionSchema),
-	antiRecommend: z.array(selectionSchema),
-	updates: z.array(selectionSchema)
+	people: bucketPairSchema,
+	updates: bucketPairSchema
 })
 
 export type RankOutput = z.infer<typeof rankSchema>
@@ -29,11 +38,9 @@ export type RankOutput = z.infer<typeof rankSchema>
 export type CeoContext = { self: SelfRecord[]; world: WorldRecord[]; system: SystemRecord[] }
 export type CeoResult = { digest: Digest; ranking: RankOutput; compose: ComposeOutput }
 
-const EMPTY_RANK: RankOutput = { recommend: [], antiRecommend: [], updates: [] }
-const EMPTY_COMPOSE: ComposeOutput = {
-	recommend: { headline: '', people: [] },
-	updates: [],
-	antiRecommend: { people: [] }
+const EMPTY_RANK: RankOutput = {
+	people: { recommend: [], antiRecommend: [] },
+	updates: { recommend: [], antiRecommend: [] }
 }
 
 const CeoState = Annotation.Root({
@@ -124,11 +131,17 @@ export function parseRank(content: string, world: WorldRecord[]): RankOutput {
 	const parsed = safeJson(content, rankSchema)
 	if (!parsed) return EMPTY_RANK
 	const known = new Set(world.map((w) => w.dedupeKey))
-	const keep = (sels: RankOutput['recommend']) => sels.filter((s) => known.has(s.dedupeKey))
+	const keep = (sels: { dedupeKey: string; reason: string }[]) =>
+		sels.filter((s) => known.has(s.dedupeKey))
 	return {
-		recommend: keep(parsed.recommend),
-		antiRecommend: keep(parsed.antiRecommend),
-		updates: keep(parsed.updates)
+		people: {
+			recommend: keep(parsed.people.recommend),
+			antiRecommend: keep(parsed.people.antiRecommend)
+		},
+		updates: {
+			recommend: keep(parsed.updates.recommend),
+			antiRecommend: keep(parsed.updates.antiRecommend)
+		}
 	}
 }
 
@@ -148,9 +161,10 @@ export function selectRecords(ranking: RankOutput, world: WorldRecord[]): Select
 			.filter((w): w is WorldRecord => w !== undefined)
 			.filter(is)
 	return {
-		recommend: pick(ranking.recommend, isPerson),
-		antiRecommend: pick(ranking.antiRecommend, isPerson),
-		updates: pick(ranking.updates, isUpdate)
+		peopleRecommend: pick(ranking.people.recommend, isPerson),
+		peopleAntiRecommend: pick(ranking.people.antiRecommend, isPerson),
+		updatesRecommend: pick(ranking.updates.recommend, isUpdate),
+		updatesAntiRecommend: pick(ranking.updates.antiRecommend, isUpdate)
 	}
 }
 
