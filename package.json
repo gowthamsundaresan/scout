@@ -7,7 +7,7 @@
 		"packages/*"
 	],
 	"scripts": {
-		"prepare": "husky install",
+		"prepare": "husky install || exit 0",
 		"build": "npm run build --workspaces --if-present",
 		"type-check": "npm run type-check --workspaces --if-present",
 		"test": "npm run test --workspaces --if-present",
