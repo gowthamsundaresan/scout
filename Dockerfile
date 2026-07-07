@@ -1,6 +1,7 @@
 # Scout — one image for all services; compose overrides `command` per service.
+# bookworm, not alpine: @temporalio/core-bridge is a glibc native module (musl unsupported).
 
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
