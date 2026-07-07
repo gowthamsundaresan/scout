@@ -16,9 +16,7 @@ export type Seed = HydratedDocument<SearchSeedDoc>
 
 // --- Core functions ---
 
-export async function runDueSeeds(
-	runSeed: (seed: Seed) => Promise<RawItem[]>
-): Promise<RawItem[]> {
+export async function runDueSeeds(runSeed: (seed: Seed) => Promise<RawItem[]>): Promise<RawItem[]> {
 	const now = Date.now()
 	let dynamicBudget = MAX_DYNAMIC_PER_DAY - (await dynamicSearchesToday())
 	const seeds = await SearchSeed.find({ dormant: false })

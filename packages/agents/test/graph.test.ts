@@ -55,6 +55,21 @@ describe('parseRank', () => {
 		expect(ranking.updates.antiRecommend[0].dedupeKey).toBe('world/ai-update/hype')
 	})
 
+	it('drops already-decided keys even when the model re-surfaces them', () => {
+		const content = JSON.stringify({
+			people: {
+				recommend: [
+					{ dedupeKey: 'world/person/jane', reason: 'fit' },
+					{ dedupeKey: 'world/person/bob', reason: 'already reached out' }
+				],
+				antiRecommend: []
+			},
+			updates: { recommend: [], antiRecommend: [] }
+		})
+		const ranking = parseRank(content, world, ['world/person/bob'])
+		expect(ranking.people.recommend.map((r) => r.dedupeKey)).toEqual(['world/person/jane'])
+	})
+
 	it('returns empty ranking on malformed or out-of-shape json', () => {
 		expect(parseRank('not json', world).people.recommend).toHaveLength(0)
 		expect(parseRank(JSON.stringify({ people: 'nope' }), world).updates.recommend).toHaveLength(0)

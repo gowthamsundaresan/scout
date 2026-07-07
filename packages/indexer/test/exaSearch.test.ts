@@ -4,8 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { connect, disconnect } from '../src/db/client'
 import { IngestJob } from '../src/db/models/ingestJob'
 import { SearchSeed } from '../src/db/models/searchSeed'
-import { exaSearch } from '../src/sources/exaSearch'
 import { getExa } from '../src/sources/exaClient'
+import { exaSearch } from '../src/sources/exaSearch'
 
 vi.mock('../src/sources/exaClient', () => ({ getExa: vi.fn() }))
 vi.mock('../src/seeding/reconcile', () => ({ reconcile: vi.fn().mockResolvedValue(0) }))
