@@ -1,3 +1,9 @@
+// Injected by build.mjs from the monorepo .env; typeof-guarded so tests run without defines.
+declare const __SCOUT_API_BASE__: string
+declare const __SCOUT_INGEST_TOKEN__: string
+const DEFAULT_API_BASE = typeof __SCOUT_API_BASE__ === 'undefined' ? '' : __SCOUT_API_BASE__
+const DEFAULT_TOKEN = typeof __SCOUT_INGEST_TOKEN__ === 'undefined' ? '' : __SCOUT_INGEST_TOKEN__
+
 export type Settings = {
 	apiBase: string
 	token: string
@@ -20,7 +26,11 @@ export async function getSettings(): Promise<Settings> {
 		'token',
 		'grokEnabled'
 	])
-	return { apiBase: apiBase ?? '', token: token ?? '', grokEnabled: grokEnabled ?? false }
+	return {
+		apiBase: apiBase ?? DEFAULT_API_BASE,
+		token: token ?? DEFAULT_TOKEN,
+		grokEnabled: grokEnabled ?? false
+	}
 }
 
 export async function setSettings(settings: Partial<Settings>): Promise<void> {
