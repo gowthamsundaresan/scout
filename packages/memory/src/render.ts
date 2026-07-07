@@ -54,8 +54,11 @@ function slugId(key: string): string {
 function toContent(record: MemoryRecord): string {
 	switch (record.namespace) {
 		case 'self':
-		case 'system':
 			return `${record.title}\n\n${record.body}`
+		case 'system':
+			// Checkpoint bodies are machine JSON, rehydrated from metadata — keep them out of content
+			// so supermemory doesn't embed/summarize them. Nothing searches checkpoints semantically.
+			return record.type === 'checkpoint' ? record.title : `${record.title}\n\n${record.body}`
 		case 'world':
 			return [record.title, record.summary, detail(record), `source: ${record.source.url}`]
 				.filter(Boolean)

@@ -1,12 +1,13 @@
 import 'dotenv/config'
 import { pathToFileURL } from 'node:url'
 
+import { flushTraces } from '@scout/llm'
+
 import { connect } from './db/client'
 import { claimNext, markDone, markFailed } from './jobs/queue'
 import { startScheduler } from './jobs/scheduler'
 import { processItem } from './pipeline/process'
 import { seedLocations } from './seeding/locations'
-import { flushTraces } from './trace'
 
 // --- Types & state ---
 

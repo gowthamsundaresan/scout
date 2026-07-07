@@ -17,6 +17,7 @@ export type QueryOptions = {
 	limit?: number
 	threshold?: number
 	type?: string
+	rerank?: boolean
 }
 
 export type ListOptions = {
@@ -43,7 +44,13 @@ export async function query<N extends Namespace>(
 		q: opts.q,
 		containerTag: namespace,
 		limit: opts.limit,
-		threshold: opts.threshold
+		threshold: opts.threshold,
+		rerank: opts.rerank,
+		// Filter server-side — a client-side filter runs after the limit, so a crowded container
+		// (e.g. system: decisions + checkpoints) can starve a low-volume type to zero results.
+		filters: opts.type
+			? { AND: [{ key: 'type', value: opts.type, filterType: 'metadata' }] }
+			: undefined
 	})
 	return res.results
 		.map((result) => rehydrate(result.metadata))
@@ -89,4 +96,10 @@ export function readSystem(opts: QueryOptions): Promise<SystemRecord[]> {
 
 export async function readDecisions(opts: QueryOptions): Promise<DecisionRecord[]> {
 	return (await query('system', { ...opts, type: 'decision' })) as DecisionRecord[]
+}
+
+// Resolve one system record by dedupeKey — supermemory has no get-by-customId, so bounded list+find.
+export async function getSystem(dedupeKey: string, type?: string): Promise<SystemRecord | null> {
+	const records = await list('system', { limit: 200, type })
+	return records.find((r) => r.dedupeKey === dedupeKey) ?? null
 }

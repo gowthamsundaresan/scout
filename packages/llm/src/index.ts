@@ -1,4 +1,6 @@
 export { getClient } from './client'
-export { traced, traceId, flushTraces } from './trace'
-export type { TraceMeta, TraceResult } from './trace'
+export { traced, traceId, score, flushTraces } from './trace'
+export type { TraceMeta, TraceResult, ScoreMeta } from './trace'
+export { complete, safeJson } from './complete'
+export type { CompleteMeta } from './complete'
 export { resolveModel } from './model'

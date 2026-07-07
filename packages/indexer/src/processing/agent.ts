@@ -1,10 +1,9 @@
 import { z } from 'zod'
 
+import { complete } from '@scout/llm'
 import type { Source, WorldRecord } from '@scout/memory'
 
-import { getClient } from '../llm/client'
-import { modelFor } from '../llm/models'
-import { traced } from '../trace'
+import { modelFor } from '../models'
 
 // --- Types & state ---
 
@@ -49,31 +48,12 @@ Extract 0..N items. Be specific and factual; skip boilerplate. Respond with JSON
 // --- Core functions ---
 
 export async function structure(input: CleanedInput): Promise<WorldRecord[]> {
-	const model = modelFor('processing-agent')
 	const user = `Page title: ${input.title}\nURL: ${input.source.url}\n\nContent:\n${input.text}`
-
-	const content = await traced(
-		{ name: 'processing-agent', model, input: { title: input.title, url: input.source.url } },
-		async () => {
-			const res = await getClient().chat.completions.create({
-				model,
-				messages: [
-					{ role: 'system', content: SYSTEM },
-					{ role: 'user', content: user }
-				],
-				response_format: { type: 'json_object' }
-			})
-			return {
-				output: res.choices[0]?.message?.content ?? '{}',
-				usage: res.usage && {
-					input: res.usage.prompt_tokens,
-					output: res.usage.completion_tokens,
-					total: res.usage.total_tokens
-				}
-			}
-		}
+	const content = await complete(
+		{ name: 'processing-agent', model: modelFor('processing-agent') },
+		SYSTEM,
+		user
 	)
-
 	return parseRecords(content, input.source)
 }
 

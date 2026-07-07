@@ -50,6 +50,20 @@ export function traceId(name: string): string {
 	return `${name}-${globalThis.crypto.randomUUID()}`
 }
 
+export type ScoreMeta = { traceId: string; name: string; value: number; comment?: string }
+
+// Deterministic id: a retried activity re-emits the same score and upserts instead of duplicating.
+export function score(meta: ScoreMeta): void {
+	if (!process.env.LANGFUSE_PUBLIC_KEY) return
+	client().score({
+		id: `${meta.traceId}-${meta.name}`,
+		traceId: meta.traceId,
+		name: meta.name,
+		value: meta.value,
+		comment: meta.comment
+	})
+}
+
 export async function flushTraces(): Promise<void> {
 	if (langfuse) await langfuse.flushAsync()
 }

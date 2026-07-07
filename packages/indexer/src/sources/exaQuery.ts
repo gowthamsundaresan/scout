@@ -1,8 +1,7 @@
+import { getClient, traced } from '@scout/llm'
 import type { MemoryRecord } from '@scout/memory'
 
-import { getClient } from '../llm/client'
-import { modelFor } from '../llm/models'
-import { traced } from '../trace'
+import { modelFor } from '../models'
 
 const SYSTEM = `You write ONE Exa Websets search query to discover INTERESTING PEOPLE connected to a
 given context — a thesis the user holds, or an event / opportunity / AI update. Target the organizers,

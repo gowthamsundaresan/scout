@@ -78,3 +78,25 @@ export type SystemRecord = SystemNoteRecord | DecisionRecord
 export type MemoryRecord = SelfRecord | WorldRecord | SystemRecord
 
 export type Metadata = Record<string, string | number | boolean>
+
+// The digest ledger: what the ceo actually sent, per section, keyed for reply/eval joins.
+export type LedgerTarget = {
+	dedupeKey: string
+	name: string
+	type: TargetType
+	facts?: string
+}
+
+export type LedgerSection = {
+	messageId: string
+	slug: string
+	intent: Intent
+	title: string
+	body: string
+	targets: LedgerTarget[]
+}
+
+export type DigestLedger = {
+	runId: string
+	sections: LedgerSection[]
+}

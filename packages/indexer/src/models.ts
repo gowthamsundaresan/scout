@@ -1,3 +1,5 @@
+import { resolveModel } from '@scout/llm'
+
 export type ModelKey = 'processing-agent' | 'exa-query'
 
 const DEFAULTS: Record<ModelKey, string> = {
@@ -6,5 +8,5 @@ const DEFAULTS: Record<ModelKey, string> = {
 }
 
 export function modelFor(key: ModelKey): string {
-	return process.env[`MODEL_${key.toUpperCase().replace(/-/g, '_')}`] || DEFAULTS[key]
+	return resolveModel(key, DEFAULTS[key])
 }

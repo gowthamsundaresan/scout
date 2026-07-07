@@ -2,36 +2,46 @@ import { config } from 'dotenv'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { CEO_TASK_QUEUE, EVALS_CLIENT_ID, EVALS_TASK_QUEUE } from './constants'
+import { EVALS_TASK_QUEUE } from './constants'
 
 // --- Types & state ---
 
-export type AgentsEnv = {
-	gatewayUrl: string
-	gatewayAdminSecret: string
+export type EvalsEnv = {
 	temporalAddress: string
 	temporalNamespace: string
 	taskQueue: string
-	evalsTaskQueue: string
-	evalsClientId: string
-	digestChannel: 'email' | 'tg'
+	port: number
+	forwardSecret?: string
+}
+
+export type BootstrapEnv = {
+	gatewayUrl: string
+	gatewayAdminSecret: string
+	receiveUrl: string
 }
 
 let loaded = false
 
 // --- Core functions ---
 
-export function loadEnv(): AgentsEnv {
+export function loadEnv(): EvalsEnv {
+	loadDotenv()
+	return {
+		temporalAddress: process.env.TEMPORAL_ADDRESS ?? 'localhost:7233',
+		temporalNamespace: process.env.TEMPORAL_NAMESPACE ?? 'default',
+		taskQueue: process.env.EVALS_TASK_QUEUE ?? EVALS_TASK_QUEUE,
+		port: Number(process.env.EVALS_PORT ?? 8788),
+		// Required by the receiver only; it fails loud at startup, the worker never needs it.
+		forwardSecret: process.env.FORWARD_SECRET
+	}
+}
+
+export function loadBootstrapEnv(): BootstrapEnv {
 	loadDotenv()
 	return {
 		gatewayUrl: required('SCOUT_GATEWAY_URL'),
 		gatewayAdminSecret: required('SCOUT_GATEWAY_ADMIN_SECRET'),
-		temporalAddress: process.env.TEMPORAL_ADDRESS ?? 'localhost:7233',
-		temporalNamespace: process.env.TEMPORAL_NAMESPACE ?? 'default',
-		taskQueue: process.env.CEO_TASK_QUEUE ?? CEO_TASK_QUEUE,
-		evalsTaskQueue: process.env.EVALS_TASK_QUEUE ?? EVALS_TASK_QUEUE,
-		evalsClientId: process.env.SCOUT_EVALS_CLIENT_ID ?? EVALS_CLIENT_ID,
-		digestChannel: process.env.SCOUT_DIGEST_CHANNEL === 'email' ? 'email' : 'tg'
+		receiveUrl: required('EVALS_RECEIVE_URL')
 	}
 }
 

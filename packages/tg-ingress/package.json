@@ -1,21 +1,21 @@
 {
-	"name": "@scout/llm",
+	"name": "@scout/tg-ingress",
 	"version": "0.1.0",
-	"description": "Scout LLM — shared OpenRouter client + Langfuse tracing for the agentic packages",
+	"description": "Scout tg-ingress — long-polls Telegram for digest replies and posts them to the gateway",
 	"private": true,
 	"type": "module",
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
 	"scripts": {
+		"dev": "tsx watch --clear-screen=false ./src/index.ts",
+		"start": "tsx ./src/index.ts",
 		"build": "tsc -p tsconfig.build.json",
 		"test": "vitest run --passWithNoTests --testTimeout=60000",
-		"lint": "eslint src",
+		"lint": "eslint src test",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"langfuse": "^3.38.0",
-		"openai": "^6.44.0",
-		"zod": "^3.23.8"
+		"dotenv": "^16.4.5"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.24",

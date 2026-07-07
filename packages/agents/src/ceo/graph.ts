@@ -1,11 +1,12 @@
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph'
 import { z } from 'zod'
 
-import { getClient, traceId as newTraceId, traced } from '@scout/llm'
+import { complete, safeJson } from '@scout/llm'
 import type {
 	AiUpdateRecord,
 	PersonRecord,
 	SelfRecord,
+	SystemNoteRecord,
 	SystemRecord,
 	WorldRecord
 } from '@scout/memory'
@@ -35,7 +36,12 @@ export const rankSchema = z.object({
 
 export type RankOutput = z.infer<typeof rankSchema>
 
-export type CeoContext = { self: SelfRecord[]; world: WorldRecord[]; system: SystemRecord[] }
+export type CeoContext = {
+	self: SelfRecord[]
+	world: WorldRecord[]
+	system: SystemRecord[]
+	lessons: SystemNoteRecord[]
+}
 export type CeoResult = { digest: Digest; ranking: RankOutput; compose: ComposeOutput }
 
 const EMPTY_RANK: RankOutput = {
@@ -47,6 +53,7 @@ const CeoState = Annotation.Root({
 	self: Annotation<SelfRecord[]>(),
 	world: Annotation<WorldRecord[]>(),
 	system: Annotation<SystemRecord[]>(),
+	lessons: Annotation<SystemNoteRecord[]>(),
 	traceId: Annotation<string>(),
 	ranking: Annotation<RankOutput>(),
 	compose: Annotation<ComposeOutput>()
@@ -56,31 +63,34 @@ type State = typeof CeoState.State
 
 // --- Core functions ---
 
-export async function runCeoGraph(ctx: CeoContext): Promise<CeoResult> {
+export async function runCeoGraph(ctx: CeoContext, traceId: string): Promise<CeoResult> {
 	const graph = buildGraph()
 	const res = await graph.invoke({
 		self: ctx.self,
 		world: ctx.world,
 		system: ctx.system,
-		traceId: newTraceId('ceo-digest')
+		lessons: ctx.lessons,
+		traceId
 	})
 	const compose = res.compose ?? EMPTY_COMPOSE
 	return { digest: renderDigest(compose), ranking: res.ranking ?? EMPTY_RANK, compose }
 }
 
 export function buildGraph() {
+	// Node names must not collide with state channels ('ranking'/'compose'), so suffix them.
 	return new StateGraph(CeoState)
-		.addNode('rank', rankNode)
-		.addNode('compose', composeNode)
-		.addEdge(START, 'rank')
-		.addEdge('rank', 'compose')
-		.addEdge('compose', END)
+		.addNode('rankNode', rankNode)
+		.addNode('composeNode', composeNode)
+		.addEdge(START, 'rankNode')
+		.addEdge('rankNode', 'composeNode')
+		.addEdge('composeNode', END)
 		.compile()
 }
 
 // --- Helper functions ---
 
 async function rankNode(state: State): Promise<Partial<State>> {
+	const decided = decidedKeys(state.system)
 	const pool = state.world.map((w) => ({
 		dedupeKey: w.dedupeKey,
 		type: w.type,
@@ -88,51 +98,38 @@ async function rankNode(state: State): Promise<Partial<State>> {
 		summary: w.summary,
 		salience: w.salience
 	}))
-	const user = rankPrompt(state.self, pool, decidedKeys(state.system))
-	const content = await complete('ceo-rank', state.traceId, RANK_SYSTEM, user)
-	return { ranking: parseRank(content, state.world) }
+	const user = rankPrompt(state.self, pool, decided, state.lessons)
+	const content = await complete(
+		{ name: 'ceo-rank', model: modelFor('ceo-rank'), traceId: state.traceId },
+		RANK_SYSTEM,
+		user
+	)
+	return { ranking: parseRank(content, state.world, decided) }
 }
 
 async function composeNode(state: State): Promise<Partial<State>> {
 	const selected = selectRecords(state.ranking ?? EMPTY_RANK, state.world)
-	const user = composePrompt(state.self, selected)
-	const content = await complete('ceo-compose', state.traceId, COMPOSE_SYSTEM, user)
+	const user = composePrompt(state.self, selected, state.lessons)
+	const content = await complete(
+		{ name: 'ceo-compose', model: modelFor('ceo-compose'), traceId: state.traceId },
+		COMPOSE_SYSTEM,
+		user
+	)
 	return { compose: parseCompose(content) }
 }
 
-async function complete(
-	node: 'ceo-rank' | 'ceo-compose',
-	traceId: string,
-	system: string,
-	user: string
-): Promise<string> {
-	const model = modelFor(node)
-	return traced({ name: node, model, traceId, input: { user } }, async () => {
-		const res = await getClient().chat.completions.create({
-			model,
-			messages: [
-				{ role: 'system', content: system },
-				{ role: 'user', content: user }
-			],
-			response_format: { type: 'json_object' }
-		})
-		return {
-			output: res.choices[0]?.message?.content ?? '{}',
-			usage: res.usage && {
-				input: res.usage.prompt_tokens,
-				output: res.usage.completion_tokens,
-				total: res.usage.total_tokens
-			}
-		}
-	})
-}
-
-export function parseRank(content: string, world: WorldRecord[]): RankOutput {
+// Enforce the already-decided skip in code, not just in the prompt: a re-surfaced decided key is dropped.
+export function parseRank(
+	content: string,
+	world: WorldRecord[],
+	decided: string[] = []
+): RankOutput {
 	const parsed = safeJson(content, rankSchema)
 	if (!parsed) return EMPTY_RANK
 	const known = new Set(world.map((w) => w.dedupeKey))
+	const skip = new Set(decided)
 	const keep = (sels: { dedupeKey: string; reason: string }[]) =>
-		sels.filter((s) => known.has(s.dedupeKey))
+		sels.filter((s) => known.has(s.dedupeKey) && !skip.has(s.dedupeKey))
 	return {
 		people: {
 			recommend: keep(parsed.people.recommend),
@@ -180,15 +177,4 @@ function isPerson(w: WorldRecord): w is PersonRecord {
 
 function isUpdate(w: WorldRecord): w is AiUpdateRecord {
 	return w.type === 'ai-update'
-}
-
-function safeJson<T>(content: string, schema: z.ZodType<T>): T | null {
-	let json: unknown
-	try {
-		json = JSON.parse(content)
-	} catch {
-		return null
-	}
-	const parsed = schema.safeParse(json)
-	return parsed.success ? parsed.data : null
 }
