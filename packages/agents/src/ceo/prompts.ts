@@ -32,10 +32,11 @@ Write:
 - updates.recommend.entries: per update — a one-line why-it-matters.
 - updates.antiRecommend.entries: per update — a one-line why-skip.
 Give each recommend bucket a short headline. Be specific and honest; never invent facts not in the records.
+Every entry must include "key": the dedupeKey of the record it came from, copied verbatim from the bucket line.
 Return ONLY JSON matching:
-{ "people": {"recommend":{"headline","entries":[{"name","handle?","why","message","pitch?"}]},
-"antiRecommend":{"entries":[{"name","why"}]}},
-"updates": {"recommend":{"headline","entries":[{"title","why"}]},"antiRecommend":{"entries":[{"title","why"}]}} }.`
+{ "people": {"recommend":{"headline","entries":[{"key","name","handle?","why","message","pitch?"}]},
+"antiRecommend":{"entries":[{"key","name","why"}]}},
+"updates": {"recommend":{"headline","entries":[{"key","title","why"}]},"antiRecommend":{"entries":[{"key","title","why"}]}} }.`
 
 export type Selected = {
 	peopleRecommend: PersonRecord[]
@@ -102,11 +103,11 @@ export function composePrompt(
 function person(p: PersonRecord): string {
 	const handle = p.handle ? ` (${p.handle})` : ''
 	const role = p.role ? `, ${p.role}` : ''
-	return `- ${p.title}${handle}${role}: ${p.whyInteresting} [${p.summary}]`
+	return `- ${p.dedupeKey} — ${p.title}${handle}${role}: ${p.whyInteresting} [${p.summary}]`
 }
 
 function update(u: AiUpdateRecord): string {
-	return `- ${u.title}: ${u.whatHappened} — ${u.whyItMatters} [${u.summary}]`
+	return `- ${u.dedupeKey} — ${u.title}: ${u.whatHappened} — ${u.whyItMatters} [${u.summary}]`
 }
 
 function section(heading: string, lines: string[]): string {

@@ -2,3 +2,5 @@ node_modules
 dist
 coverage
 package-lock.json
+packages/web/.next
+packages/web/next-env.d.ts

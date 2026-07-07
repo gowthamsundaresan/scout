@@ -2,7 +2,7 @@ import { log, proxyActivities, workflowInfo } from '@temporalio/workflow'
 
 import type { DigestSlug, Intent } from '@scout/memory'
 
-import type { DigestKey } from '../ceo/digest'
+import { type DigestKey, pingSummary } from '../ceo/digest'
 import {
 	TEMPLATE_AI_ANTIRECOMMEND,
 	TEMPLATE_AI_RECOMMEND,
@@ -11,12 +11,11 @@ import {
 } from '../constants'
 import type * as activities from './activities'
 
-const { readContext, composeDigest, ensureClient, sendSection, recordLedger } = proxyActivities<
-	typeof activities
->({
-	startToCloseTimeout: '5 minutes',
-	retry: { maximumAttempts: 3 }
-})
+const { readContext, composeDigest, ensureClient, sendSection, sendPing, recordLedger } =
+	proxyActivities<typeof activities>({
+		startToCloseTimeout: '5 minutes',
+		retry: { maximumAttempts: 3 }
+	})
 
 // The four digests, in send order. slug keeps messageIds stable+idempotent across activity retries.
 const PLAN: { key: DigestKey; templateId: string; intent: Intent; slug: DigestSlug }[] = [
@@ -35,7 +34,7 @@ const PLAN: { key: DigestKey; templateId: string; intent: Intent; slug: DigestSl
 export async function ceoDigestWorkflow(): Promise<{ sent: number }> {
 	const ctx = await readContext()
 	const runId = workflowInfo().runId
-	const { digest, ranking } = await composeDigest(ctx, runId)
+	const { digest, cards, ranking } = await composeDigest(ctx, runId)
 	const auth = await ensureClient()
 
 	const sentSlugs: string[] = []
@@ -47,12 +46,18 @@ export async function ceoDigestWorkflow(): Promise<{ sent: number }> {
 			templateId: p.templateId,
 			intent: p.intent,
 			title: section.title,
-			body: section.body
+			body: section.body,
+			data: cards[p.key]
 		})
 		sentSlugs.push(p.slug)
 	}
 
-	if (sentSlugs.length === 0) log.warn('ceo digest produced no sendable sections', { runId })
-	else await recordLedger(runId, ranking, digest, ctx.world, sentSlugs)
+	if (sentSlugs.length === 0) {
+		log.warn('ceo digest produced no sendable sections', { runId })
+	} else {
+		// Ledger first — it is the eval ground truth; the ping is best-effort notification.
+		await recordLedger(runId, ranking, digest, ctx.world, sentSlugs)
+		await sendPing(auth, runId, pingSummary(cards))
+	}
 	return { sent: sentSlugs.length }
 }

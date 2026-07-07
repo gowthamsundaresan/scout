@@ -11,6 +11,7 @@
 		"worker": "tsx ./src/temporal/worker.ts",
 		"schedule": "tsx ./src/temporal/schedule.ts",
 		"bootstrap": "tsx ./src/bootstrap.ts",
+		"bootstrap:web": "tsx ./src/bootstrapWeb.ts",
 		"build": "tsc -p tsconfig.build.json",
 		"test": "vitest run --passWithNoTests --testTimeout=60000",
 		"lint": "eslint src test",

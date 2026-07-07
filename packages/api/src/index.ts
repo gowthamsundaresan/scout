@@ -11,6 +11,7 @@ import { authBearer } from './hooks/auth'
 import { grokConfig } from './routes/config'
 import { health } from './routes/health'
 import { ingest } from './routes/ingest'
+import { decisions, jobs, lessons, memoryBrowse, seeds } from './routes/ops'
 
 // --- Helper functions ---
 
@@ -34,6 +35,11 @@ async function main(): Promise<void> {
 	app.get('/health', health)
 	app.get('/config/grok', grokConfig)
 	app.post('/ingest/:source', authBearer(env.ingestSecret), wrap(ingest))
+	app.get('/ops/jobs', authBearer(env.ingestSecret), wrap(jobs))
+	app.get('/ops/seeds', authBearer(env.ingestSecret), wrap(seeds))
+	app.get('/ops/decisions', authBearer(env.ingestSecret), wrap(decisions))
+	app.get('/ops/lessons', authBearer(env.ingestSecret), wrap(lessons))
+	app.get('/ops/memory', authBearer(env.ingestSecret), wrap(memoryBrowse))
 
 	app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 		console.error('[api] error:', err.message)

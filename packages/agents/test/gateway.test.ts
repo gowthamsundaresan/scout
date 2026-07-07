@@ -47,6 +47,23 @@ describe('gateway client', () => {
 		expect((opts.headers as Record<string, string>).Authorization).toBe('Bearer jwt.token')
 	})
 
+	it('passes structured card data through the send body', async () => {
+		const fetchMock = mockFetch(200, { messageId: 'm2', status: 'delivered' })
+		await sendMessage(
+			{ baseUrl: 'http://gw:3000', jwt: 'jwt.token' },
+			{
+				messageId: 'm2',
+				templateId: 'digest-recommend',
+				intent: 0,
+				vars: { title: 't', body: 'b' },
+				data: { entries: [{ kind: 'person', name: 'Jane', why: 'ships infra' }] }
+			}
+		)
+		const [, opts] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+		const body = JSON.parse(opts.body as string)
+		expect(body.data.entries[0].name).toBe('Jane')
+	})
+
 	it('throws on a non-2xx response', async () => {
 		mockFetch(401, { error: 'unauthorized' })
 		await expect(

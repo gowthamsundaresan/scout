@@ -14,7 +14,9 @@ import type {
 import {
 	type ComposeOutput,
 	type Digest,
+	type DigestCards,
 	EMPTY_COMPOSE,
+	buildCards,
 	composeSchema,
 	renderDigest
 } from './digest'
@@ -42,7 +44,12 @@ export type CeoContext = {
 	system: SystemRecord[]
 	lessons: SystemNoteRecord[]
 }
-export type CeoResult = { digest: Digest; ranking: RankOutput; compose: ComposeOutput }
+export type CeoResult = {
+	digest: Digest
+	cards: DigestCards
+	ranking: RankOutput
+	compose: ComposeOutput
+}
 
 const EMPTY_RANK: RankOutput = {
 	people: { recommend: [], antiRecommend: [] },
@@ -73,7 +80,13 @@ export async function runCeoGraph(ctx: CeoContext, traceId: string): Promise<Ceo
 		traceId
 	})
 	const compose = res.compose ?? EMPTY_COMPOSE
-	return { digest: renderDigest(compose), ranking: res.ranking ?? EMPTY_RANK, compose }
+	const ranking = res.ranking ?? EMPTY_RANK
+	return {
+		digest: renderDigest(compose),
+		cards: buildCards(compose, selectRecords(ranking, ctx.world)),
+		ranking,
+		compose
+	}
 }
 
 export function buildGraph() {

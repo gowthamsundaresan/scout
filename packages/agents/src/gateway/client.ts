@@ -5,13 +5,13 @@ import type { Intent } from '@scout/memory'
 export type AdminAuth = { baseUrl: string; adminSecret: string }
 export type SendAuth = { baseUrl: string; jwt: string }
 
-export type Scope = { send?: boolean; receive?: boolean }
+export type Scope = { send?: boolean; receive?: boolean; read?: boolean }
 
 export type RegisterBody = { clientId?: string; name: string; scope: Scope; receiveUrl?: string }
 export type TemplateBody = {
 	templateId?: string
 	name: string
-	channel: 'email' | 'tg'
+	channel: 'email' | 'tg' | 'web'
 	title: string
 	body: string
 }
@@ -20,6 +20,7 @@ export type SendBody = {
 	templateId: string
 	intent: Intent
 	vars?: Record<string, string>
+	data?: Record<string, unknown>
 	receiverIds?: string[]
 }
 

@@ -77,6 +77,7 @@ vi.mock('@temporalio/client', () => ({
 
 process.env.SCOUT_GATEWAY_URL = 'http://localhost:0'
 process.env.SCOUT_GATEWAY_ADMIN_SECRET = 'test'
+process.env.SCOUT_DASHBOARD_URL = 'http://localhost:3000'
 
 const { composeDigest, readContext, recordLedger, rankPrompt } = await import('@scout/agents')
 const { checkpointToLedger } = await import('@scout/memory')

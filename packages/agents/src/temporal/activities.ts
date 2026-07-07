@@ -14,9 +14,9 @@ import {
 	write
 } from '@scout/memory'
 
-import type { Digest, DigestKey } from '../ceo/digest'
+import type { Digest, DigestKey, SectionCards } from '../ceo/digest'
 import { type CeoContext, type CeoResult, type RankOutput, runCeoGraph } from '../ceo/graph'
-import { CEO_CLIENT_ID } from '../constants'
+import { CEO_CLIENT_ID, TEMPLATE_DIGEST_PING } from '../constants'
 import { loadEnv } from '../env'
 import { type SendAuth, type SendResult, registerClient, sendMessage } from '../gateway/client'
 
@@ -28,6 +28,7 @@ export type SectionJob = {
 	intent: Intent
 	title: string
 	body: string
+	data?: SectionCards
 }
 
 // --- Core functions ---
@@ -70,8 +71,23 @@ export async function sendSection(auth: SendAuth, job: SectionJob): Promise<Send
 		templateId: job.templateId,
 		intent: job.intent,
 		vars: { title: job.title, body: job.body },
+		data: job.data,
 		// Replies inherit the original message's receivers — this is what routes them to evals.
 		receiverIds: [loadEnv().evalsClientId]
+	})
+}
+
+// The tg one-liner that points at the dashboard. No receiverIds: replies to it feed no loop.
+export async function sendPing(
+	auth: SendAuth,
+	runId: string,
+	summary: string
+): Promise<SendResult> {
+	return sendMessage(auth, {
+		messageId: `${runId}-ping`,
+		templateId: TEMPLATE_DIGEST_PING,
+		intent: 0,
+		vars: { summary, url: loadEnv().dashboardUrl }
 	})
 }
 

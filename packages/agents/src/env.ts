@@ -14,7 +14,7 @@ export type AgentsEnv = {
 	taskQueue: string
 	evalsTaskQueue: string
 	evalsClientId: string
-	digestChannel: 'email' | 'tg'
+	dashboardUrl: string
 }
 
 let loaded = false
@@ -31,7 +31,7 @@ export function loadEnv(): AgentsEnv {
 		taskQueue: process.env.CEO_TASK_QUEUE ?? CEO_TASK_QUEUE,
 		evalsTaskQueue: process.env.EVALS_TASK_QUEUE ?? EVALS_TASK_QUEUE,
 		evalsClientId: process.env.SCOUT_EVALS_CLIENT_ID ?? EVALS_CLIENT_ID,
-		digestChannel: process.env.SCOUT_DIGEST_CHANNEL === 'email' ? 'email' : 'tg'
+		dashboardUrl: required('SCOUT_DASHBOARD_URL')
 	}
 }
 

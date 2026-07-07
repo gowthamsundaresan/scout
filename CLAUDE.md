@@ -23,7 +23,9 @@ packages/
       gateway/        # client.ts — register + /send to scout-gateway
       temporal/       # activities.ts, workflows.ts, worker.ts, schedule.ts (6h cron)
       bootstrap.ts    # registers the ceo client + digest templates with the gateway
-  api/                # ingest gateway (health/config/ingest)
+  api/                # ingest gateway (health/config/ingest + /ops read endpoints)
+  web/                # Next.js dashboard (Vercel) — the primary digest channel + ops view;
+                      # deliberately self-contained: zero @scout/* deps, wire types mirrored in src/lib/types.ts
   extension/          # grok-capture browser extension
 ```
 
