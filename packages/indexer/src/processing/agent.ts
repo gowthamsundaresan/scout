@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { complete } from '@scout/llm'
+import { complete, safeJson } from '@scout/llm'
 import type { Source, WorldRecord } from '@scout/memory'
 
 import { modelFor } from '../models'
@@ -60,15 +60,9 @@ export async function structure(input: CleanedInput): Promise<WorldRecord[]> {
 // --- Helper functions ---
 
 export function parseRecords(content: string, source: Source): WorldRecord[] {
-	let json: unknown
-	try {
-		json = JSON.parse(content)
-	} catch {
-		return []
-	}
-	const parsed = outputSchema.safeParse(json)
-	if (!parsed.success) return []
-	return parsed.data.items
+	const parsed = safeJson(content, outputSchema)
+	if (!parsed) return []
+	return parsed.items
 		.map((item) => toWorldRecord(item, source))
 		.filter((record): record is WorldRecord => record !== null)
 }
