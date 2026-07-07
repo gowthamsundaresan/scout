@@ -2,7 +2,7 @@ import { getFeedState, getSettings, setFeedState, setLoginStatus } from './confi
 import { runGrok } from './grok/driver'
 import { getSsoCookie } from './grok/sso'
 import { getStatsigId } from './grok/statsig'
-import { postIngest } from './ingest'
+import { enqueueIngest } from './queue'
 
 // --- Core functions ---
 
@@ -50,7 +50,8 @@ export async function feederTick(): Promise<void> {
 		const prompt = state.prompts[i]
 		const result = await runGrok(prompt, getStatsigId())
 		if (result.success && result.answer) {
-			await postIngest(settings.apiBase, settings.token, 'grok', {
+			// Durable outbox: a failed post must not lose the answer or burn the 6h epoch.
+			await enqueueIngest('grok', {
 				text: result.answer,
 				sourceRef: `grok://${slug(prompt)}/${Date.now()}`,
 				capturedAt: new Date().toISOString()

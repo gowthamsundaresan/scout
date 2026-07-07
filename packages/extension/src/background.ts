@@ -4,6 +4,7 @@ import { feederTick, pollConfig, probeLogin } from './feeder'
 import { setStatsigId } from './grok/statsig'
 import { postIngest } from './ingest'
 import type { IngestResult } from './ingest'
+import { flushIngestQueue } from './queue'
 
 // --- Types & state ---
 
@@ -11,6 +12,7 @@ const MENU_PAGE = 'scout-clip-page'
 const MENU_SELECTION = 'scout-clip-selection'
 const CONFIG_POLL_MS = 30 * 60 * 1000
 const LOGIN_POLL_MS = 2 * 60 * 1000
+const QUEUE_FLUSH_MS = 5 * 60 * 1000
 let started = false
 let grokRunning = false
 let drainTimer: ReturnType<typeof setTimeout> | null = null
@@ -77,6 +79,8 @@ async function startApp(): Promise<void> {
 	setInterval(() => void pollConfig(), CONFIG_POLL_MS)
 	void probeLogin()
 	setInterval(() => void probeLogin(), LOGIN_POLL_MS)
+	void flushIngestQueue()
+	setInterval(() => void flushIngestQueue(), QUEUE_FLUSH_MS)
 	await syncGrok()
 }
 
