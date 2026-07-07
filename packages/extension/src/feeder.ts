@@ -1,8 +1,10 @@
-import { getFeedState, getSettings, setFeedState } from './config'
+import { getFeedState, getSettings, setFeedState, setLoginStatus } from './config'
 import { runGrok } from './grok/driver'
 import { getSsoCookie } from './grok/sso'
 import { getStatsigId } from './grok/statsig'
 import { postIngest } from './ingest'
+
+// --- Core functions ---
 
 export async function pollConfig(): Promise<void> {
 	const { apiBase } = await getSettings()
@@ -25,32 +27,43 @@ export async function pollConfig(): Promise<void> {
 	} catch {}
 }
 
+export async function probeLogin(): Promise<boolean> {
+	const isLoggedIn = !!(await getSsoCookie())
+	await setLoginStatus({ isLoggedIn, checkedAt: Date.now() })
+	return isLoggedIn
+}
+
 export async function feederTick(): Promise<void> {
 	const settings = await getSettings()
 	const state = await getFeedState()
-	if (!settings.grokEnabled || !state.configEnabled) return
+	if (!settings.grokEnabled || !state.configEnabled || state.prompts.length === 0) return
 
-	let queue = state.queue
-	if (queue.length === 0) {
-		const due = Date.now() - state.lastBatchAt >= state.runIntervalHours * 3_600_000
-		if (!due || state.prompts.length === 0) return
-		queue = [...state.prompts]
-		await setFeedState({ queue, lastBatchAt: Date.now() })
+	const due = Date.now() - state.lastBatchAt >= state.runIntervalHours * 3_600_000
+	if (!due) return
+
+	// Gate on login before touching lastBatchAt so a disconnected epoch is not
+	// consumed — the batch runs when the login poll next flips to connected.
+	if (!(await probeLogin())) return
+
+	for (let i = 0; i < state.prompts.length; i++) {
+		if (i > 0) await sleep(Math.max(1, state.spacingMinutes) * 60_000)
+		const prompt = state.prompts[i]
+		const result = await runGrok(prompt, getStatsigId())
+		if (result.success && result.answer) {
+			await postIngest(settings.apiBase, settings.token, 'grok', {
+				text: result.answer,
+				sourceRef: `grok://${slug(prompt)}/${Date.now()}`,
+				capturedAt: new Date().toISOString()
+			})
+		}
 	}
+	await setFeedState({ lastBatchAt: Date.now() })
+}
 
-	const prompt = queue[0]
-	await setFeedState({ queue: queue.slice(1) })
+// --- Helper functions ---
 
-	if (!(await getSsoCookie())) return
-
-	const result = await runGrok(prompt, getStatsigId())
-	if (result.success && result.answer) {
-		await postIngest(settings.apiBase, settings.token, 'grok', {
-			text: result.answer,
-			sourceRef: `grok://${slug(prompt)}/${Date.now()}`,
-			capturedAt: new Date().toISOString()
-		})
-	}
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function slug(s: string): string {

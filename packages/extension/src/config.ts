@@ -9,9 +9,10 @@ export type FeedState = {
 	runIntervalHours: number
 	spacingMinutes: number
 	configEnabled: boolean
-	queue: string[]
 	lastBatchAt: number
 }
+
+export type LoginStatus = { isLoggedIn: boolean; checkedAt: number }
 
 export async function getSettings(): Promise<Settings> {
 	const { apiBase, token, grokEnabled } = await chrome.storage.local.get([
@@ -32,7 +33,6 @@ export async function getFeedState(): Promise<FeedState> {
 		'runIntervalHours',
 		'spacingMinutes',
 		'configEnabled',
-		'queue',
 		'lastBatchAt'
 	])
 	return {
@@ -40,11 +40,20 @@ export async function getFeedState(): Promise<FeedState> {
 		runIntervalHours: d.runIntervalHours ?? 6,
 		spacingMinutes: d.spacingMinutes ?? 3,
 		configEnabled: d.configEnabled ?? true,
-		queue: d.queue ?? [],
 		lastBatchAt: d.lastBatchAt ?? 0
 	}
 }
 
 export async function setFeedState(state: Partial<FeedState>): Promise<void> {
 	await chrome.storage.local.set(state)
+}
+
+export async function getLoginStatus(): Promise<LoginStatus> {
+	const { grokLogin } = await chrome.storage.local.get('grokLogin')
+	return grokLogin ?? { isLoggedIn: false, checkedAt: 0 }
+}
+
+export async function setLoginStatus(patch: Partial<LoginStatus>): Promise<void> {
+	const cur = await getLoginStatus()
+	await chrome.storage.local.set({ grokLogin: { ...cur, ...patch } })
 }

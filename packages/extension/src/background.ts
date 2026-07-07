@@ -1,6 +1,6 @@
 import { capture } from './capture'
 import { getFeedState, getSettings } from './config'
-import { feederTick, pollConfig } from './feeder'
+import { feederTick, pollConfig, probeLogin } from './feeder'
 import { setStatsigId } from './grok/statsig'
 import { postIngest } from './ingest'
 import type { IngestResult } from './ingest'
@@ -10,6 +10,7 @@ import type { IngestResult } from './ingest'
 const MENU_PAGE = 'scout-clip-page'
 const MENU_SELECTION = 'scout-clip-selection'
 const CONFIG_POLL_MS = 30 * 60 * 1000
+const LOGIN_POLL_MS = 2 * 60 * 1000
 let started = false
 let grokRunning = false
 let drainTimer: ReturnType<typeof setTimeout> | null = null
@@ -42,6 +43,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 		void syncGrok()
 		return undefined
 	}
+	if (msg?.action === 'probe-login') {
+		probeLogin()
+			.then((isLoggedIn) => sendResponse({ isLoggedIn }))
+			.catch(() => sendResponse({ isLoggedIn: false }))
+		return true
+	}
 	if (msg?.type === 'clip-page') {
 		clipActiveTab()
 			.then(sendResponse)
@@ -51,6 +58,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 	return undefined
 })
 
+// Run a due batch the moment login returns, rather than waiting for the next tick.
+chrome.storage.onChanged.addListener((changes, ns) => {
+	if (ns !== 'local' || !changes.grokLogin || !grokRunning) return
+	const was = changes.grokLogin.oldValue as { isLoggedIn?: boolean } | undefined
+	const now = changes.grokLogin.newValue as { isLoggedIn?: boolean } | undefined
+	if (!was?.isLoggedIn && now?.isLoggedIn) {
+		void feederTick().catch((err) => console.error('[scout] feeder:', err))
+	}
+})
+
 // --- Helper functions ---
 
 async function startApp(): Promise<void> {
@@ -58,6 +75,8 @@ async function startApp(): Promise<void> {
 	started = true
 	await pollConfig()
 	setInterval(() => void pollConfig(), CONFIG_POLL_MS)
+	void probeLogin()
+	setInterval(() => void probeLogin(), LOGIN_POLL_MS)
 	await syncGrok()
 }
 
