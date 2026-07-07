@@ -1,0 +1,23 @@
+name: deploy web
+
+# The Vercel GitHub app isn't installed, so main-merge promotion runs through the CLI instead.
+on:
+  push:
+    branches: [main]
+    paths: ['packages/web/**']
+  workflow_dispatch:
+
+jobs:
+  vercel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx -y vercel deploy --prod --yes --token "$VERCEL_TOKEN"
