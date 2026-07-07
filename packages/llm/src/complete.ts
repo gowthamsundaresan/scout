@@ -33,10 +33,13 @@ export async function complete(meta: CompleteMeta, system: string, user: string)
 	)
 }
 
+// OpenRouter's json_object response_format is not enforced for Anthropic models, which fence the JSON.
+const fenced = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/
+
 export function safeJson<T>(content: string, schema: z.ZodType<T>): T | null {
 	let json: unknown
 	try {
-		json = JSON.parse(content)
+		json = JSON.parse(fenced.exec(content)?.[1] ?? content)
 	} catch {
 		return null
 	}
