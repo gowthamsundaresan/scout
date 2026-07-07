@@ -1,11 +1,11 @@
-# Scout API — HTTP gateway (ingest + future routes)
+# Scout — one image for all services; compose overrides `command` per service.
 
 FROM node:20-alpine
 
 WORKDIR /app
 
 ARG CI_BUILD_VERSION
-ENV API_VERSION=$CI_BUILD_VERSION
+ENV SCOUT_VERSION=$CI_BUILD_VERSION
 
 COPY package.json package-lock.json ./
 COPY packages ./packages

@@ -1,0 +1,123 @@
+name: scout
+
+# One box, one stack. CI syncs this file + Caddyfile + supermemory.Dockerfile to /opt/scout
+# on every release; .env lives only on the box. Scout services share one image — command picks
+# the entrypoint. Only caddy is public; everything else talks over the compose network.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      GATEWAY_HOST: ${GATEWAY_HOST}
+      API_HOST: ${API_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+  gateway:
+    image: ghcr.io/gowthamsundaresan/scout-gateway:latest
+    restart: unless-stopped
+    env_file: .env
+
+  scout-api:
+    image: ghcr.io/gowthamsundaresan/scout:latest
+    command: ['npx', 'tsx', 'packages/api/src/index.ts']
+    restart: unless-stopped
+    env_file: .env
+
+  indexer:
+    image: ghcr.io/gowthamsundaresan/scout:latest
+    command: ['npx', 'tsx', 'packages/indexer/src/worker.ts']
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - supermemory
+
+  agents-worker:
+    image: ghcr.io/gowthamsundaresan/scout:latest
+    command: ['npx', 'tsx', 'packages/agents/src/temporal/worker.ts']
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - temporal
+      - gateway
+      - supermemory
+
+  evals-worker:
+    image: ghcr.io/gowthamsundaresan/scout:latest
+    command: ['npx', 'tsx', 'packages/evals/src/temporal/worker.ts']
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - temporal
+      - supermemory
+
+  evals-receiver:
+    image: ghcr.io/gowthamsundaresan/scout:latest
+    command: ['npx', 'tsx', 'packages/evals/src/receiver/server.ts']
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - temporal
+
+  tg-ingress:
+    image: ghcr.io/gowthamsundaresan/scout:latest
+    command: ['npx', 'tsx', 'packages/tg-ingress/src/index.ts']
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - gateway
+
+  temporal:
+    image: temporalio/auto-setup:1.25
+    restart: unless-stopped
+    environment:
+      DB: postgres12
+      DB_PORT: '5432'
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - postgres
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    restart: unless-stopped
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports:
+      - '127.0.0.1:8080:8080' # private — reach via `ssh -L 8080:localhost:8080 <box>`
+    depends_on:
+      - temporal
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  supermemory:
+    build:
+      context: .
+      dockerfile: supermemory.Dockerfile
+    restart: unless-stopped
+    environment:
+      SUPERMEMORY_DATA_DIR: /data
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL}
+      OPENAI_FAST_MODEL: ${OPENAI_FAST_MODEL}
+    volumes:
+      - supermemory-data:/data
+
+volumes:
+  caddy-data:
+  pgdata:
+  supermemory-data:

@@ -1,0 +1,8 @@
+# Hostnames come from .env (sslip.io names today; swap to real domains by editing .env only).
+{$GATEWAY_HOST} {
+	reverse_proxy gateway:3001
+}
+
+{$API_HOST} {
+	reverse_proxy scout-api:4100
+}
