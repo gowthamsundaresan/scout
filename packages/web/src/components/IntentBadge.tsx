@@ -1,12 +1,12 @@
-export function IntentBadge({ intent }: { intent?: number }) {
-	const skip = intent === 1
+export function IntentBadge({ kind, anti }: { kind: 'people' | 'ai'; anti: boolean }) {
+	const label = kind === 'people' ? (anti ? 'skip' : 'reach out') : anti ? 'noise' : 'worth reading'
 	return (
 		<span
-			className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-				skip ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+			className={`rounded-[3px] px-2.5 py-1 font-mono text-[10.5px] tracking-[0.1em] uppercase whitespace-nowrap ${
+				anti ? 'border-c-red text-c-red border' : 'bg-c-green text-bg font-semibold'
 			}`}
 		>
-			{skip ? 'skip' : 'recommend'}
+			{label}
 		</span>
 	)
 }

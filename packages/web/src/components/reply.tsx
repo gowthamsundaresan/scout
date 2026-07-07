@@ -3,15 +3,27 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+// --- Types & state ---
+
+type SendResult = 'ok' | 'auth' | 'error'
+
+const MICRO =
+	'rounded-[3px] border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors duration-300 disabled:opacity-40 cursor-pointer'
+
 // --- Helper functions ---
 
-async function send(replyToMessageId: string, text: string): Promise<boolean> {
-	const res = await fetch('/api/reply', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ replyToMessageId, text })
-	})
-	return res.ok
+async function send(replyToMessageId: string, text: string): Promise<SendResult> {
+	try {
+		const res = await fetch('/api/reply', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ replyToMessageId, text })
+		})
+		if (res.ok) return 'ok'
+		return res.status === 401 ? 'auth' : 'error'
+	} catch {
+		return 'error'
+	}
 }
 
 // --- Core functions ---
@@ -26,39 +38,46 @@ export function CardActions({
 	entryKey?: string
 }) {
 	const router = useRouter()
-	const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'failed'>('idle')
+	const [state, setState] = useState<'idle' | 'busy' | 'sent' | SendResult>('idle')
 
 	async function verdict(kind: 'Accept' | 'Reject') {
 		setState('busy')
 		// The feedback judge resolves targets by dedupeKey when present, by name otherwise
 		const ref = entryKey ? `${name} (${entryKey})` : name
-		const ok = await send(sectionId, `${kind}: ${ref}`)
-		setState(ok ? 'sent' : 'failed')
-		if (ok) router.refresh()
+		const result = await send(sectionId, `${kind}: ${ref}`)
+		setState(result === 'ok' ? 'sent' : result)
+		if (result === 'ok') router.refresh()
 	}
 
-	if (state === 'sent') return <span className="text-xs text-neutral-500">sent ✓</span>
+	if (state === 'sent') {
+		return (
+			<span className="text-c-green font-mono text-[10px] tracking-[0.1em] uppercase">sent</span>
+		)
+	}
 
 	return (
-		<div className="flex items-center gap-1.5">
-			{state === 'failed' && <span className="text-xs text-red-400">failed</span>}
+		<span className="flex items-center gap-1.5">
+			{state === 'auth' && (
+				<span className="text-c-red font-mono text-[10px] uppercase">session expired — reload</span>
+			)}
+			{state === 'error' && (
+				<span className="text-c-red font-mono text-[10px] uppercase">failed</span>
+			)}
 			<button
 				onClick={() => verdict('Accept')}
 				disabled={state === 'busy'}
-				title="Accept"
-				className="rounded-md border border-emerald-500/30 px-2 py-0.5 text-xs text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50"
+				className={`${MICRO} border-c-green/40 text-c-green hover:bg-c-green/10`}
 			>
 				accept
 			</button>
 			<button
 				onClick={() => verdict('Reject')}
 				disabled={state === 'busy'}
-				title="Reject"
-				className="rounded-md border border-red-500/30 px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+				className={`${MICRO} border-c-red/40 text-c-red hover:bg-c-red/10`}
 			>
 				reject
 			</button>
-		</div>
+		</span>
 	)
 }
 
@@ -66,34 +85,48 @@ export function ReplyBox({ replyToMessageId }: { replyToMessageId: string }) {
 	const router = useRouter()
 	const [text, setText] = useState('')
 	const [busy, setBusy] = useState(false)
+	const [error, setError] = useState<'auth' | 'error' | null>(null)
 
 	async function submit(e: React.FormEvent) {
 		e.preventDefault()
 		if (!text.trim()) return
 		setBusy(true)
-		const ok = await send(replyToMessageId, text.trim())
-		if (ok) {
-			setText('')
-			router.refresh()
+		setError(null)
+		try {
+			const result = await send(replyToMessageId, text.trim())
+			if (result === 'ok') {
+				setText('')
+				router.refresh()
+			} else {
+				setError(result)
+			}
+		} finally {
+			setBusy(false)
 		}
-		setBusy(false)
 	}
 
 	return (
-		<form onSubmit={submit} className="mt-3 flex gap-2">
-			<input
-				value={text}
-				onChange={(e) => setText(e.target.value)}
-				placeholder="Reply to this section…"
-				className="flex-1 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-600"
-			/>
-			<button
-				type="submit"
-				disabled={busy || !text.trim()}
-				className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
-			>
-				{busy ? '…' : 'Send'}
-			</button>
+		<form onSubmit={submit} className="mt-4">
+			<div className="flex items-baseline gap-3">
+				<input
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					placeholder="reply to this section…"
+					className="border-line text-ink placeholder:text-ink-faint focus:border-ink-faint flex-1 border-b bg-transparent pb-1.5 font-mono text-[13px] transition-colors duration-300 outline-none"
+				/>
+				<button
+					type="submit"
+					disabled={busy || !text.trim()}
+					className="text-ink-faint hover:text-ink cursor-pointer font-mono text-[10.5px] tracking-[0.1em] uppercase transition-colors duration-300 disabled:opacity-40"
+				>
+					{busy ? '…' : 'send'}
+				</button>
+			</div>
+			{error && (
+				<p className="text-c-red mt-2 font-mono text-[10px] tracking-[0.1em] uppercase">
+					{error === 'auth' ? 'session expired — reload the page' : 'send failed — try again'}
+				</p>
+			)}
 		</form>
 	)
 }

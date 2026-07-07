@@ -1,40 +1,35 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import localFont from 'next/font/local'
 
+import { Sidebar } from '../components/Sidebar'
 import './globals.css'
 
-export const metadata: Metadata = {
-	title: 'Scout',
-	description: 'Scout dashboard — digests, ops, memory'
-}
+const neue = localFont({
+	src: [
+		{ path: '../fonts/NeueMontreal-Light.otf', weight: '300' },
+		{ path: '../fonts/NeueMontreal-Regular.otf', weight: '400' },
+		{ path: '../fonts/NeueMontreal-Medium.otf', weight: '500' },
+		{ path: '../fonts/NeueMontreal-Bold.otf', weight: '700' }
+	],
+	variable: '--font-neue'
+})
 
-const NAV = [
-	{ href: '/', label: 'Digest' },
-	{ href: '/ops', label: 'Ops' },
-	{ href: '/memory', label: 'Memory' },
-	{ href: '/decisions', label: 'Decisions' },
-	{ href: '/lessons', label: 'Lessons' }
-]
+export const metadata: Metadata = {
+	title: { default: 'scout', template: '%s · scout' },
+	description: 'Scout dashboard — digests, pipeline, memory, evals'
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">
-			<body className="min-h-screen bg-neutral-950 text-neutral-200 antialiased">
-				<nav className="border-b border-neutral-800">
-					<div className="mx-auto flex max-w-3xl items-center gap-5 px-4 py-3 text-sm">
-						<span className="font-semibold tracking-tight text-neutral-100">scout</span>
-						{NAV.map((item) => (
-							<Link
-								key={item.href}
-								href={item.href}
-								className="text-neutral-400 transition-colors hover:text-neutral-100"
-							>
-								{item.label}
-							</Link>
-						))}
-					</div>
-				</nav>
-				<main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+			<body className={`${neue.variable} bg-bg text-ink-dim min-h-screen font-sans antialiased`}>
+				<div className="noise" />
+				<Sidebar />
+				<div className="pl-40 md:pl-52">
+					<main className="relative z-[2] mx-auto w-full max-w-[760px] px-6 py-10 md:py-14">
+						{children}
+					</main>
+				</div>
 			</body>
 		</html>
 	)

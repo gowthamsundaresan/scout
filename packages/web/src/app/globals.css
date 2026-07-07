@@ -1,1 +1,103 @@
 @import 'tailwindcss';
+
+/* Design language transplanted from gowtham-city-homepage (pages/index.js style block) */
+@theme {
+	--color-bg: #000000;
+	--color-raised: #1e293b;
+	--color-ink: #ffffff;
+	--color-ink-dim: #b4b4b4;
+	--color-ink-faint: #6e6e6e;
+	--color-line: #222222;
+	--color-c-orange: #fb923c;
+	--color-c-purple: #c084fc;
+	--color-c-blue: #60a5fa;
+	--color-c-green: #4ade80;
+	--color-c-yellow: #facc15;
+	--color-c-pink: #f472b6;
+	--color-c-red: #f87171;
+	--font-sans: var(--font-neue), system-ui, sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Cascadia Mono', monospace;
+	--ease-rise: cubic-bezier(0.2, 0.7, 0.2, 1);
+	--ease-snap: cubic-bezier(0.16, 1, 0.3, 1);
+	--animate-pulse-dot: pulse-dot 2.6s ease-in-out infinite;
+}
+
+@keyframes rise {
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes pulse-dot {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	-webkit-font-smoothing: antialiased;
+}
+
+.noise {
+	position: fixed;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	opacity: 0.025;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.rise {
+	opacity: 0;
+	transform: translateY(16px);
+	animation: rise 0.8s var(--ease-rise) forwards;
+}
+
+.reveal {
+	opacity: 0;
+	transform: translateY(20px);
+	transition:
+		opacity 0.7s var(--ease-rise),
+		transform 0.7s var(--ease-rise);
+}
+
+.reveal.in {
+	opacity: 1;
+	transform: none;
+}
+
+.sec-label {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--color-ink-faint);
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--color-line);
+}
+
+.eyebrow {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+	.reveal,
+	.rise {
+		opacity: 1;
+		transform: none;
+		transition: none;
+		animation: none;
+	}
+}

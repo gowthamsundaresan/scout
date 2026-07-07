@@ -13,6 +13,9 @@ export type DigestRun = {
 	sections: { slug: DigestSlug; message: GatewayMessage }[]
 }
 
+export type SectionPair = { recommend?: GatewayMessage; anti?: GatewayMessage }
+export type GroupedRun = { people: SectionPair; ai: SectionPair }
+
 // --- Core functions ---
 
 export function parseRunId(messageId: string): { runId: string; slug: DigestSlug } | null {
@@ -48,16 +51,16 @@ export function groupRuns(messages: GatewayMessage[]): DigestRun[] {
 		.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
 
+// slug → position in the People/AI × recommend/anti grid
+export function groupSections(run: DigestRun): GroupedRun {
+	const bySlug = new Map(run.sections.map((s) => [s.slug, s.message]))
+	return {
+		people: { recommend: bySlug.get('people-0'), anti: bySlug.get('people-1') },
+		ai: { recommend: bySlug.get('ai-0'), anti: bySlug.get('ai-1') }
+	}
+}
+
 export function cardsOf(message: GatewayMessage): SectionCards | null {
 	const data = message.payload?.data
 	return data && Array.isArray(data.entries) ? data : null
-}
-
-export function formatDate(iso: string): string {
-	return new Date(iso).toLocaleString('en-US', {
-		month: 'short',
-		day: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit'
-	})
 }

@@ -1,19 +1,16 @@
-import { formatDate } from '../lib/digest'
 import type { GatewayMessage } from '../lib/types'
+import { LocalTime } from './LocalTime'
 
 export function Thread({ replies }: { replies: GatewayMessage[] }) {
 	if (!replies.length) return null
 	return (
-		<div className="mt-3 space-y-2">
+		<div className="border-line mt-4 space-y-3 border-l pl-4">
 			{replies.map((reply) => (
-				<div
-					key={reply.messageId}
-					className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm"
-				>
-					<div className="text-xs text-neutral-500">
-						{reply.fromClientId} · {formatDate(reply.createdAt)}
+				<div key={reply.messageId}>
+					<div className="eyebrow text-ink-faint text-[10px]">
+						{reply.fromClientId} · <LocalTime iso={reply.createdAt} />
 					</div>
-					<div className="mt-0.5 whitespace-pre-wrap text-neutral-300">
+					<div className="text-ink-dim mt-1 text-[14px] leading-[1.62] whitespace-pre-wrap">
 						{String(reply.payload?.text ?? '')}
 					</div>
 				</div>

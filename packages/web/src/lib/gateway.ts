@@ -51,6 +51,9 @@ export async function postReply(
 
 // --- Helper functions ---
 
+// Bounded: a wedged gateway must degrade to an "unreachable" chip, not hang the page
+const TIMEOUT_MS = 10_000
+
 function base(): string {
 	return env.gatewayUrl().replace(/\/$/, '')
 }
@@ -58,7 +61,8 @@ function base(): string {
 async function get<T>(path: string): Promise<T> {
 	const res = await fetch(`${base()}${path}`, {
 		headers: { Authorization: `Bearer ${env.gatewayJwt()}` },
-		cache: 'no-store'
+		cache: 'no-store',
+		signal: AbortSignal.timeout(TIMEOUT_MS)
 	})
 	if (!res.ok) throw new Error(`gateway ${path} ${res.status}: ${await res.text()}`)
 	return res.json()

@@ -16,9 +16,16 @@ export async function createToken(secret: string): Promise<string> {
 
 export async function verifyToken(token: string | undefined, secret: string): Promise<boolean> {
 	if (!token || !secret) return false
-	const [exp, sig] = token.split('.')
+	const parts = token.split('.')
+	if (parts.length !== 2) return false
+	const [exp, sig] = parts
 	if (!exp || !sig || Number(exp) < Date.now()) return false
 	return timingSafeEqual(sig, await hmac(exp, secret))
+}
+
+// HMAC both sides so the comparison leaks neither content nor length
+export async function safeCompare(a: string, b: string, secret: string): Promise<boolean> {
+	return timingSafeEqual(await hmac(a, secret), await hmac(b, secret))
 }
 
 export function timingSafeEqual(a: string, b: string): boolean {
