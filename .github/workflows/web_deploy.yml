@@ -10,6 +10,8 @@ on:
 jobs:
   vercel:
     runs-on: ubuntu-latest
+    # A bad token makes the CLI wait forever on interactive login — fail loud instead
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -20,4 +22,5 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx -y vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+        # --archive=tgz: single-tarball upload; per-file uploads have stalled from this repo
+        run: npx -y vercel deploy --prod --yes --archive=tgz --token "$VERCEL_TOKEN"
