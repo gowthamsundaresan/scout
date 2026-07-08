@@ -6,3 +6,8 @@ dist
 *.log
 .env
 **/.env
+# packages/web deploys via the Vercel Git integration; the box image runs
+# api/indexer/workers/receiver/tg-ingress only (npm ci verified without it)
+packages/web
+.vercel
+**/.next
